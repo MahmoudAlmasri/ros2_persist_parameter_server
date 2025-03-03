@@ -32,14 +32,17 @@ int main(int argc, char **argv)
   auto nonros_args = rclcpp::init_and_remove_ros_arguments(argc, argv);
 
   options_description description("ROS2 parameter server command line interfaces");
-  description.add_options()
-    ("help,h", "help message to show interfaces")
-    ("file-path,f", value<string>()->default_value("/tmp/parameter_server.yaml"),
-    "volume path to load/store parameters in yaml format (default /tmp/parameter_server.yaml)")
-    ("allow-declare,d", value<bool>()->default_value(true),
-    "enable(true) / disable(false) allow_undeclared_parameters via node option (default true)")
-    ("allow-override,o", value<bool>()->default_value(true),
-    "enable(true) / disable(false) automatically_declare_parameters_from_overrides via node option (default true)");
+  description.add_options()("help,h", "help message to show interfaces")(
+    "file-path,f", value<string>()->default_value("/tmp/parameter_server.yaml"),
+    "volume path to load/store parameters in yaml format (default /tmp/parameter_server.yaml)")(
+    "allow-declare,d", value<bool>()->default_value(true),
+    "enable(true) / disable(false) allow_undeclared_parameters via node option (default true)")(
+    "allow-override,o", value<bool>()->default_value(true),
+    "enable(true) / disable(false) automatically_declare_parameters_from_overrides via node option "
+    "(default true)")(
+    "storing-frequency,s", value<int>()->default_value(60),
+    "frequency in seconds for periodic parameters storing (default 60). Do not perform periodic "
+    "storing if not > 0");
 
   variables_map vm;
   store(basic_command_line_parser<char>(nonros_args).options(description).run(), vm);
@@ -49,6 +52,7 @@ int main(int argc, char **argv)
   string opt_file("/tmp/parameter_server.yaml");
   bool opt_allow_declare = true;
   bool opt_allow_override = true;
+  int storing_frequency = 60;
 
   if (vm.count("help"))
   {
@@ -61,6 +65,7 @@ int main(int argc, char **argv)
     opt_file = vm["file-path"].as<string>();
     opt_allow_declare = vm["allow-declare"].as<bool>();
     opt_allow_override = vm["allow-override"].as<bool>();
+    storing_frequency = vm["storing-frequency"].as<int>();
   }
 
   rclcpp::NodeOptions options = (
@@ -72,7 +77,7 @@ int main(int argc, char **argv)
   ParameterServer::SharedPtr node = nullptr;
   try
   {
-    node = ParameterServer::make_shared(node_name, options, opt_file);
+    node = ParameterServer::make_shared(node_name, options, opt_file, storing_frequency);
     if (node == nullptr)
     {
       throw std::bad_alloc();
@@ -94,4 +99,3 @@ int main(int argc, char **argv)
   rclcpp::shutdown();
   return ret;
 }
-
